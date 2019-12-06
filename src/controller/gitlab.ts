@@ -96,6 +96,23 @@ interface IssueBody {
     };
 }
 
+interface NoteBody {
+    user: User;
+    repository: Repository;
+    object_attributes: {
+        id: number,
+        note: string,
+        url: string,
+        noteable_type: string
+    };
+    merge_request: {
+        title: string,
+        source_branch: string,
+        target_branch: string,
+        url: string,
+    };
+}
+
 const HEADER_KEY: string = "x-gitlab-event";
 
 const EVENTS = {
@@ -145,6 +162,8 @@ export default class GitWebhookController {
                 return await GitWebhookController.handleMR(ctx, robotid);
             case "issue":
                 return await GitWebhookController.handleIssue(ctx, robotid);
+            case "note":
+                return await GitWebhookController.handleNote(ctx, robotid);
             default:
                 return await GitWebhookController.handleDefault(ctx, event);
         }
@@ -220,6 +239,23 @@ export default class GitWebhookController {
                         标题：${attr.title}
                         发起人：${user.name}
                         [查看详情](${attr.url})`;
+        await robot.sendMdMsg(mdMsg);
+        ctx.status = 200;
+        return;
+    }
+
+    public static async handleNote(ctx: BaseContext, robotid?: string) {
+        const body: NoteBody = ctx.request.body;
+        const robot: ChatRobot = new ChatRobot(
+            robotid || config.chatid
+        );
+        const {user, object_attributes, repository, merge_request} = body;
+        const attr = object_attributes;
+        console.log("[Note handler]Req Body", body);
+        const mdMsg = `${user.name} 在MR [${merge_request.title}](${merge_request.url}) 了一个note
+                        源分支：${merge_request.source_branch}
+                        目标分支：${merge_request.target_branch}
+                        note：${attr.note}`;
         await robot.sendMdMsg(mdMsg);
         ctx.status = 200;
         return;
